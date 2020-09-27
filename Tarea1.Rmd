@@ -1,0 +1,131 @@
+---
+title: "Los más pobres del 2010"
+author: "Concepción Peralta Silverio"
+date: "26/9/2020"
+output: html_document
+---
+
+# La riqueza de México no llega al sur <br>
+<p><b>Irónicamente a cuatro de los estados con mayor diversidad cultural y recursos naturales.</b><br>
+<b>El Índice de Desarrollo Humano</b> es una medida estándar elaborada por el Programa de las Naciones Unidas para el Desarrollo (PNUD), evalua las posibilidades que tienen las personas para lograr una vida larga, digna y con educación.</p>
+
+```{r,echo=FALSE,warning=FALSE,cache=FALSE,message=FALSE,error=FALSE}
+#cargamos librerías
+library(sf)
+library(tidyverse)
+library(leaflet)
+library(plotly)
+
+#Cargamos datos
+
+PobrezaExtrema <- read_csv("../datos/pobrezaExtrema.csv", 
+                           col_types = cols(Valor = col_number()))
+
+
+#Segunda base de datos para bajar municipios con coordenadas, y lo filtramos para que solo baje los  municipios más pobres:
+mpios <- st_read("https://raw.githubusercontent.com/JuveCampos/Shapes_Resiliencia_CDMX_CIDE/master/geojsons/Division%20Politica/mpios2.geojson", quiet = TRUE)%>%
+  filter (NOM_ENT == "Oaxaca" | NOM_ENT == "Chiapas" |NOM_ENT == "Guerrero" | NOM_ENT == "Veracruz") 
+
+#Base de datos que nos permite ver un mapa de todo el país
+edo <- st_read("https://raw.githubusercontent.com/JuveCampos/MexicoSinIslas/master/Sin_islas.geojson", quiet = TRUE)
+
+Pobreza<-
+    PobrezaExtrema %>%  
+    filter(Year == "2010" & Valor > 85.5)
+
+ Mas_pobres <- PobrezaExtrema %>% 
+   filter(Valor > 85.5 & Year == "2010")
+
+```
+
+
+```{r,echo=FALSE,warning=FALSE,cache=FALSE,message=FALSE,error=FALSE}
+#Gráfica
+Pobreza %>% 
+  ggplot (aes(x = Municipio, y = Valor, fill = Entidad, text = paste0("<b>Entidad: </b>", Entidad, "<br>", "<b>Valor: </b>", Valor, "<br>")))+
+  geom_col()+
+  coord_flip()+
+  labs (title = "Los más pobres de 2010",         caption = "Fuente = datahuman.org")+
+  theme(legend.position = "none")
+```
+
+# Triste competencia<br> 
+<p> El Índice de Desarrollo Humano los coloca por arriba del 85% de rezago, es decir, 8 de 10 habitantes sobreviven en precarias condiciones.</p>
+
+
+```{r,echo=FALSE,warning=FALSE,cache=FALSE,message=FALSE,error=FALSE}
+#Gráfica interactiva
+ggplotly(tooltip = "text")  %>% 
+  config(displayModeBar = F)
+```
+
+
+# Pobres entre los pobres<br>
+<p>La mitad de los 10 municipios están en Oaxaca, dos en Chiapas, dos en Guerrero y uno Veracruz. El chiapaneco San Juan Cancuc es el más pobre con 90.51 de rezago.</p> 
+
+
+
+```{r,echo=FALSE,warning=FALSE,cache=FALSE,message=FALSE,error=FALSE}
+
+#Mapa estático 
+
+ Mas_pobres <- PobrezaExtrema %>% 
+   filter(Valor > 85.5 & Year == "2010")
+ 
+Mapa<- merge(x = mpios,
+        y= Mas_pobres,
+       by.x = "CVE_MUN",
+         by.y = "CVE_MUN")
+
+  Mapa %>%
+    ggplot(aes(fill = Valor))+
+           geom_sf(data = edo,
+                   fill = "#c39243",
+                   color = "black")+
+    geom_sf(data = mpios,
+            fill = "white", color = "#5c640f")+
+    geom_sf( color = "#006400",fill = "#131105")+
+    theme_minimal()+
+    labs(title = "Los municipios más pobres del país",
+         caption = "Fuente = datahuman.org")
+
+```
+
+
+<p><b>Viven rezagados por falta de inversión, empleo e infraestructura</b> </p>. 
+
+
+```{r,echo=FALSE,warning=FALSE,cache=FALSE,message=FALSE,error=FALSE}
+
+#Mapa interactivo
+
+leaflet(Mapa) %>%
+  addTiles()%>%
+  addPolygons(data = mpios, fill = "white", color = "#5c640f") %>% 
+  addPolygons(data = edo, color = "#006400", fill = "green", opacity = 0.6) %>% 
+  addPolygons(color = "#131105", opacity = 0.9, popup = paste0("<b>Entidad: </b>", Mapa$Entidad,"<br>", "<b>Valor: </b>", Mapa$Valor, "<br>")) 
+
+
+```
+
+
+
+# La pobreza en un lustro <br>
+<p>Para 2015 el municipio veracruzano salió de la lista, San Juan Cancuc dejó de ser el más pobre, pero aumentaron los municipios pobres en Oaxaca, con nueve de los 10 más pobres.</p>
+
+
+| 2010                  | Estado   | 2015                | Estado  |
+|-----------------------|----------|---------------------|---------|
+| San Juan Cancuc       | Chiapas  | Santos Reyes Yucuná | Oaxaca  |
+| San Simón Zahuatlán   | Oaxaca   | Santiago Nuyoó      | Oaxaca  |
+| San Juan Petlapa      | Oaxaca   | Santiago Ixtayutla  | Oaxaca  |
+| Santa Lucía Mihuatlán | Oaxaca   | Santiago Amoltepec  | Oaxaca  |
+| San Juan Lachigalla   | Oaxaca   | Santa María Zaniza  | Oaxaca  |
+| San Juan Teita        | Oaxaca   | San Simón Zahuatlán | Oaxaca  |
+| Cochoapa el Grand     | Guerrero | San Martín Peras    | Oaxaca  |
+| Metlatónoc            | Guerrero | San Juan Cancuc     | Chiapas |
+| Chalchihuitán         | Chiapas  | San Bartolomé       | Oaxaca  |
+| Tehuipango            | Veracruz | Huautepec           | Oaxaca  |
+
+
+
